@@ -3,8 +3,6 @@ import { Info, CalendarDays, Rocket, BrainCircuit, Users, BookOpenCheck, Image a
 
 // Substitueix aquest valor per la teva API Key de Gemini
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
-
-interface Session {
   id: number;
   title: string;
   activities: string;
@@ -63,7 +61,7 @@ const generateSA = async (promptText: string): Promise<SAData> => {
 // Funció per generar la imatge de la infografia amb el model Imagen 3 de Google
 const generateInfographicImage = async (visualPrompt: string): Promise<string> => {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${GEMINI_API_KEY}`,
+   `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${GEMINI_API_KEY}`
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
