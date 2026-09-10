@@ -1,26 +1,13 @@
 import React, { useState } from 'react';
 import { Info, CalendarDays, Rocket, BrainCircuit, Users, BookOpenCheck, Image as ImageIcon } from 'lucide-react';
 
-// Substitueix aquest valor per la teva API Key de Gemini
+// Obtenció de la clau des de les variables d'entorn de Vercel
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
-  id: number;
-  title: string;
-  activities: string;
-  visualPrompt: string;
-  imageUrl?: string | null;
-}
 
-interface SAData {
-  title: string;
-  repte: string;
-  producteFinal: string;
-  sessions: Session[];
-}
-
-// Funció per generar la Situació d'Aprenentatge amb Gemini
-const generateSA = async (promptText: string): Promise<SAData> => {
+// Funció per generar la SA amb Gemini 1.5 Flash
+const generateSA = async (promptText) => {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -54,14 +41,17 @@ const generateSA = async (promptText: string): Promise<SAData> => {
   );
 
   const data = await response.json();
+  if (!data.candidates || !data.candidates[0]) {
+    throw new Error("Resposta no vàlida de l'API de Gemini");
+  }
   const rawText = data.candidates[0].content.parts[0].text;
   return JSON.parse(rawText);
 };
 
 // Funció per generar la imatge de la infografia amb el model Imagen 3 de Google
-const generateInfographicImage = async (visualPrompt: string): Promise<string> => {
+const generateInfographicImage = async (visualPrompt) => {
   const response = await fetch(
-   `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${GEMINI_API_KEY}`
+    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -87,9 +77,9 @@ const generateInfographicImage = async (visualPrompt: string): Promise<string> =
 
 function App() {
   const [prompt, setPrompt] = useState('La importància del reciclatge a 4t de primària');
-  const [saData, setSaData] = useState<SAData | null>(null);
+  const [saData, setSaData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [generatingImages, setGeneratingImages] = useState<{ [key: number]: boolean }>({});
+  const [generatingImages, setGeneratingImages] = useState({});
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -99,12 +89,13 @@ function App() {
       setSaData(generatedSA);
     } catch (error) {
       console.error("Error generant la SA:", error);
+      alert("Error en generació: Revisa que la clau VITE_GEMINI_API_KEY a Vercel sigui correcta.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGenerateImage = async (sessionId: number) => {
+  const handleGenerateImage = async (sessionId) => {
     if (!saData) return;
     const session = saData.sessions.find(s => s.id === sessionId);
     if (!session || !session.visualPrompt) return;
@@ -125,6 +116,7 @@ function App() {
       });
     } catch (error) {
       console.error(`Error generant imatge per a la sessió ${sessionId}:`, error);
+      alert("Error generant la imatge de la infografia.");
     } finally {
       setGeneratingImages(prev => ({ ...prev, [sessionId]: false }));
     }
@@ -184,7 +176,7 @@ function App() {
                 </div>
               </div>
 
-              {saData.sessions.map((session) => (
+              {saData.sessions && saData.sessions.map((session) => (
                 <div key={session.id} className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100 mb-6">
                     <div className="flex items-center gap-3">
