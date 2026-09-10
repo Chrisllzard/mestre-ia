@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Info, CalendarDays, Rocket, BrainCircuit, Users, BookOpenCheck, Image as ImageIcon } from 'lucide-react';
 
 // Substitueix aquest valor per la teva API Key de Gemini
-const GEMINI_API_KEY = "LA_TEVA_API_KEY_DE_GEMINI";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
 interface Session {
   id: number;
