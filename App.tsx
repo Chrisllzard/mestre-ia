@@ -1,87 +1,58 @@
 import React, { useState } from 'react';
+import { GoogleGenAI } from '@google/genai';
 import { Info, CalendarDays, Rocket, BrainCircuit, Users, BookOpenCheck, Image as ImageIcon } from 'lucide-react';
 
-// Obtenció de la clau des de les variables d'entorn de Vercel
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+// Inicialitzem l'SDK oficial de Gemini amb la clau d'entorn
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
 
-// Funció per generar la SA amb Gemini (Endpoint i parseig corregits)
+// Funció per generar la SA estructurada en JSON
 const generateSA = async (promptText) => {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
+  const response = await ai.models.generateContent({
+    model: 'gemini-1.5-flash',
+    contents: `Ets un expert en el Decret 175/2022 de Catalunya. Genera una Situació d'Aprenentatge (SA) estructurada en format JSON sobre el tema: "${promptText}".
+    El JSON ha de tenir exactament aquesta estructura:
     {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: `Ets un expert en el Decret 175/2022 de Catalunya. Genera una Situació d'Aprenentatge (SA) estructurada en format JSON sobre el tema: "${promptText}". 
-                El JSON ha de tenir exactament aquesta estructura:
-                {
-                  "title": "Títol de la SA",
-                  "repte": "Descripció del repte",
-                  "producteFinal": "Descripció del producte final",
-                  "sessions": [
-                    {
-                      "id": 1,
-                      "title": "Títol de la sessió 1",
-                      "activities": "Explicació detallada de les activitats",
-                      "visualPrompt": "Detailed visual description for an educational vector infographic image representing this session, flat style, bright colors, cute characters of children, no text."
-                    }
-                  ]
-                }`
-              }
-            ]
-          }
-        ],
-        generationConfig: { responseMimeType: "application/json" }
-      })
-    }
-  );
+      "title": "Títol de la SA",
+      "repte": "Descripció del repte",
+      "producteFinal": "Descripció del producte final",
+      "sessions": [
+        {
+          "id": 1,
+          "title": "Títol de la sessió 1",
+          "activities": "Explicació detallada de les activitats",
+          "visualPrompt": "Detailed visual description for an educational vector infographic image representing this session, flat style, bright colors, cute characters of children, no text."
+        }
+      ]
+    }`,
+    config: {
+      responseMimeType: 'application/json',
+    },
+  });
 
-  const data = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(data.error?.message || "Error en la petició a l'API de Gemini");
+  if (!response.text) {
+    throw new Error("No s'ha rebut resposta del model.");
   }
 
-  if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-    throw new Error("Resposta no vàlida de l'API de Gemini");
-  }
-
-  let rawText = data.candidates[0].content.parts[0].text;
-  
-  // Netegem possibles marcadors markdown de codi si Gemini els afegeix
-  rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-
-  return JSON.parse(rawText);
+  return JSON.parse(response.text);
 };
 
-// Funció per generar la imatge de la infografia amb el model Imagen 3 de Google
+// Funció per generar la imatge de la infografia amb Imagen 3
 const generateInfographicImage = async (visualPrompt) => {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: visualPrompt,
-        config: {
-          numberOfImages: 1,
-          outputMimeType: "image/jpeg",
-          aspectRatio: "1:1"
-        }
-      })
-    }
-  );
+  const response = await ai.models.generateImages({
+    model: 'imagen-3.0-generate-002',
+    prompt: visualPrompt,
+    config: {
+      numberOfImages: 1,
+      outputMimeType: 'image/jpeg',
+      aspectRatio: '1:1',
+    },
+  });
 
-  const data = await response.json();
-  if (data.generatedImages && data.generatedImages.length > 0) {
-    const base64ImageBytes = data.generatedImages[0].image.imageBytes;
+  const base64ImageBytes = response.generatedImages?.[0]?.image?.imageBytes;
+  if (base64ImageBytes) {
     return `data:image/jpeg;base64,${base64ImageBytes}`;
   }
-  
+
   throw new Error("No s'ha pogut generar la imatge.");
 };
 
@@ -99,7 +70,7 @@ function App() {
       setSaData(generatedSA);
     } catch (error) {
       console.error("Error generant la SA:", error);
-      alert("Error en generació: Revisa que la clau VITE_GEMINI_API_KEY a Vercel sigui correcta.");
+      alert("Error en generació. Revisa que la variable VITE_GEMINI_API_KEY a Vercel sigui correcta.");
     } finally {
       setLoading(false);
     }
