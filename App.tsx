@@ -4,10 +4,10 @@ import { Info, CalendarDays, Rocket, BrainCircuit, Users, BookOpenCheck, Image a
 // Obtenció de la clau des de les variables d'entorn de Vercel
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
-// Funció per generar la SA amb Gemini 1.5 Flash
+// Funció per generar la SA amb Gemini (Endpoint i parseig corregits)
 const generateSA = async (promptText) => {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -41,10 +41,20 @@ const generateSA = async (promptText) => {
   );
 
   const data = await response.json();
-  if (!data.candidates || !data.candidates[0]) {
+  
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Error en la petició a l'API de Gemini");
+  }
+
+  if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
     throw new Error("Resposta no vàlida de l'API de Gemini");
   }
-  const rawText = data.candidates[0].content.parts[0].text;
+
+  let rawText = data.candidates[0].content.parts[0].text;
+  
+  // Netegem possibles marcadors markdown de codi si Gemini els afegeix
+  rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+
   return JSON.parse(rawText);
 };
 
